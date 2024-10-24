@@ -8,9 +8,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--n_training', type=int, default=400, help='# of training data')
+    parser.add_argument('--n_training', type=int, default=320, help='# of training data')
     parser.add_argument('--n_validation', type=int, default=64, help='# of validation data')
-    parser.add_argument('--n_test', type=int, default=100, help='# of test data for various SNR')
+    parser.add_argument('--n_test', type=int, default=10, help='# of test data for various SNR')
     parser.add_argument('--grid_size', type=int, default=10000, help='the size of grids')
     parser.add_argument('--gaussian_std', type=float, default=100, help='the size of grids')
     parser.add_argument('--batch_size', type=int, default=64, help='the size of batch')
@@ -134,11 +134,15 @@ if __name__ == '__main__':
 
             # Generate the training data
             clean_signal, doa, target_num = doasys.gen_signal(args.n_training, args)
+
             clean_signal_tensor = torch.from_numpy(clean_signal).float()
             # print("shape of clean signal is: ", clean_signal_tensor.shape)
             # print("clean signal tensor: ",clean_signal_tensor)
             noisy_signal = doasys.noise_torch(clean_signal_tensor, args.snr)
             noisy_signal_np = noisy_signal.numpy()
+            print("noisy signal is: ", noisy_signal)
+            print("doa is: ", doa)
+            print("target num is: ", target_num)
 
             # print("shape of noisy signal is: ", noisy_signal_np.shape)
             # print("noisy signal tensor: ",noisy_signal_np)
@@ -153,6 +157,7 @@ if __name__ == '__main__':
             # Generate the validation data
             clean_signal, doa, target_num = doasys.gen_signal(args.n_validation, args)
             clean_signal_tensor = torch.from_numpy(clean_signal).float()
+
             noisy_signal = doasys.noise_torch(clean_signal_tensor, args.snr)
             noisy_signal_np = noisy_signal.numpy()
 
@@ -164,13 +169,18 @@ if __name__ == '__main__':
             validation_data['train_type'].append(train_type)
         # print("train type: ", training_data['train_type'])        # Save all training data for this idx in one file
         # print("shape of dataset noisy signal is: ", training_data['noisy_signal'].size())
-        # print("data set clean signal is: ",training_data['clean_signal'])
+        print("data set doa is: ",training_data['doa'])
         np.savez(f'training_data_{idx}.npz',
                  doa=training_data['doa'],
                  clean_signal=training_data['clean_signal'],
                  noisy_signal=training_data['noisy_signal'],
                  target_num=training_data['target_num'],
-                 train_type=training_data['train_type'])
+                 train_type=training_data['train_type'],
+                 d=args.d,
+                 max_target_num=args.max_target_num,
+                 ant_num=args.ant_num,
+                 n_training=args.n_training
+                 )
 
         # Save all validation data for this idx in one file
         np.savez(f'validation_data_{idx}.npz',
@@ -178,7 +188,10 @@ if __name__ == '__main__':
                  clean_signal=validation_data['clean_signal'],
                  noisy_signal=validation_data['noisy_signal'],
                  target_num=validation_data['target_num'],
-                 train_type=validation_data['train_type'])
+                 train_type=validation_data['train_type'],
+                 d=args.d,
+                 n_validation=args.n_validation
+                 )
 
         # Generate test data only for idx == 0
         if idx == 0:
@@ -207,7 +220,10 @@ if __name__ == '__main__':
              clean_signal=test_data_clean,
              noisy_signal=test_data_noisy,
              target_num=test_data_num,
-             SNR=test_data_snr)
+             SNR = test_data_snr,
+             d=args.d,
+             n_test=args.n_test
+             )
 
     print("Data generation completed successfully.")
     print(f"Generated {args.train_num} training and validation datasets.")

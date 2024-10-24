@@ -131,9 +131,9 @@ class spectrumModule(nn.Module):
         self.n_filters = n_filters
         self.in_layer = nn.Linear(2 * signal_dim, inner_dim * n_filters, bias=False)
         mod = []
-        for n in range(n_layers):  # padding=kernel_size - 1
+        for n in range(n_layers):
             mod += [
-                nn.Conv1d(n_filters, n_filters, kernel_size=kernel_size, padding=kernel_size - 1, bias=False,
+                nn.Conv1d(n_filters, n_filters, kernel_size=kernel_size, padding='same', bias=False,
                           padding_mode='circular'),
                 # nn.Conv1d(n_filters, n_filters, kernel_size=kernel_size, padding=kernel_size - 1, bias=False),
                 nn.BatchNorm1d(n_filters),
@@ -204,6 +204,7 @@ def train_net(args, net, optimizer, criterion, train_loader, val_loader,
     net.train()
     loss_train = 0
     dic_mat = np.zeros((doa_grid.size, 2, args.ant_num))
+
     if net_type == 0:
         for n in range(doa_grid.size):
             tmp = steer_vec(doa_grid[n], args.d, args.ant_num, np.zeros(args.ant_num).T)
@@ -213,21 +214,22 @@ def train_net(args, net, optimizer, criterion, train_loader, val_loader,
         if args.use_cuda:
             dic_mat_torch = dic_mat_torch.cuda()
 
-    for batch_idx, (clean_signal, target_sp, doa) in enumerate(train_loader):
+    for batch_idx, (noisy_signal, target_sp, doa) in enumerate(train_loader):
         if args.use_cuda:
-            clean_signal, target_sp = clean_signal.cuda(), target_sp.cuda()
-        noisy_signal = noise_torch(clean_signal, args.snr)
+            noisy_signal, target_sp = noisy_signal.cuda(), target_sp.cuda()
+
         optimizer.zero_grad()
         output_net = net(noisy_signal).view(args.batch_size, 2, -1)
+
         if net_type == 0:
             mm_real = torch.mm(output_net[:, 0, :], dic_mat_torch[:, 0, :].T) + torch.mm(output_net[:, 1, :],
                                                                                          dic_mat_torch[:, 1, :].T)
             mm_imag = torch.mm(output_net[:, 0, :], dic_mat_torch[:, 1, :].T) - torch.mm(output_net[:, 1, :],
                                                                                          dic_mat_torch[:, 0, :].T)
-            # loss = criterion(torch.pow(mm_real, 2) + torch.pow(mm_imag, 2), target_sp)
         else:
             mm_real = output_net[:, 0, :]
             mm_imag = output_net[:, 1, :]
+
         sp = torch.pow(mm_real, 2) + torch.pow(mm_imag, 2)
         loss = criterion(sp, target_sp)
 
@@ -235,16 +237,12 @@ def train_net(args, net, optimizer, criterion, train_loader, val_loader,
         optimizer.step()
         loss_train += loss.data.item()
 
-        # plt.figure()
-        # plt.plot(sp.cpu().detach().numpy()[0])
-        # plt.plot(target_sp.cpu().detach().numpy()[0])
-        # plt.show()
-
     net.eval()
     loss_val, fnr_val = 0, 0
-    for batch_idx, (noisy_signal, _, target_sp, doa) in enumerate(val_loader):
+    for batch_idx, (noisy_signal, target_sp, doa) in enumerate(val_loader):
         if args.use_cuda:
             noisy_signal, target_sp = noisy_signal.cuda(), target_sp.cuda()
+
         with torch.no_grad():
             output_net = net(noisy_signal).view(args.batch_size, 2, -1)
 
@@ -256,6 +254,7 @@ def train_net(args, net, optimizer, criterion, train_loader, val_loader,
         else:
             mm_real = output_net[:, 0, :]
             mm_imag = output_net[:, 1, :]
+
         sp = torch.pow(mm_real, 2) + torch.pow(mm_imag, 2)
         loss = criterion(sp, target_sp)
         loss_val += loss.data.item()
@@ -266,13 +265,12 @@ def train_net(args, net, optimizer, criterion, train_loader, val_loader,
     loss_train /= args.n_training
     loss_val /= args.n_validation
 
-    print("TTrain_Num: %d, rain_Type: %d, Epochs: %d / %d, Time: %.1f, Training Loss: %.2f, Validation Loss:  %.2f" % (
+    print("Train_Num: %d, Train_Type: %d, Epoch: %d / %d, Time: %.1f, Training Loss: %.2f, Validation Loss:  %.2f" % (
         train_num,
         train_type,
         epoch, args.n_epochs,
         time.time() - epoch_start_time,
         loss_train,
         loss_val))
-    # print(np.sort(doa[0]))
-    # print(np.sort(est_doa[0]))
+
     return net, loss_train, loss_val
