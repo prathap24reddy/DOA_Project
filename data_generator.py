@@ -8,9 +8,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--n_training', type=int, default=320, help='# of training data')
+    parser.add_argument('--n_training', type=int, default=8000, help='# of training data')
     parser.add_argument('--n_validation', type=int, default=64, help='# of validation data')
-    parser.add_argument('--n_test', type=int, default=10, help='# of test data for various SNR')
+    parser.add_argument('--n_test', type=int, default=100, help='# of test data for various SNR')
     parser.add_argument('--grid_size', type=int, default=10000, help='the size of grids')
     parser.add_argument('--gaussian_std', type=float, default=100, help='the size of grids')
     parser.add_argument('--batch_size', type=int, default=64, help='the size of batch')
@@ -140,9 +140,9 @@ if __name__ == '__main__':
             # print("clean signal tensor: ",clean_signal_tensor)
             noisy_signal = doasys.noise_torch(clean_signal_tensor, args.snr)
             noisy_signal_np = noisy_signal.numpy()
-            print("noisy signal is: ", noisy_signal)
-            print("doa is: ", doa)
-            print("target num is: ", target_num)
+            # print("noisy signal is: ", noisy_signal)
+            # print("doa is: ", doa)
+            # print("target num is: ", target_num)
 
             # print("shape of noisy signal is: ", noisy_signal_np.shape)
             # print("noisy signal tensor: ",noisy_signal_np)
@@ -169,7 +169,7 @@ if __name__ == '__main__':
             validation_data['train_type'].append(train_type)
         # print("train type: ", training_data['train_type'])        # Save all training data for this idx in one file
         # print("shape of dataset noisy signal is: ", training_data['noisy_signal'].size())
-        print("data set doa is: ",training_data['doa'])
+        # print("data set doa is: ",training_data['doa'])
         np.savez(f'training_data_{idx}.npz',
                  doa=training_data['doa'],
                  clean_signal=training_data['clean_signal'],
@@ -193,26 +193,24 @@ if __name__ == '__main__':
                  n_validation=args.n_validation
                  )
 
-        # Generate test data only for idx == 0
-        if idx == 0:
-            # [Test data generation code remains the same]
-            SNR_range = np.linspace(10, 30, 7)
-            n_test = args.n_test
+    # Generate test data
+    SNR_range = np.linspace(10, 30, 7)
+    n_test = args.n_test
 
-            for snr_idx, SNR_dB in enumerate(SNR_range):
-                for n1 in range(n_test):
-                    test_len = 2
-                    clean_signal, doa, target_num = doasys.gen_signal(test_len, args)
+    for snr_idx, SNR_dB in enumerate(SNR_range):
+        for n1 in range(n_test):
+            test_len = 2
+            clean_signal, doa, target_num = doasys.gen_signal(test_len, args)
 
-                    clean_signal_tensor = torch.from_numpy(clean_signal).float()
-                    noisy_signal = doasys.noise_torch(clean_signal_tensor, math.pow(10.0, SNR_dB / 10.0))
-                    noisy_signal_np = noisy_signal.numpy()
+            clean_signal_tensor = torch.from_numpy(clean_signal).float()
+            noisy_signal = doasys.noise_torch(clean_signal_tensor, math.pow(10.0, SNR_dB / 10.0))
+            noisy_signal_np = noisy_signal.numpy()
 
-                    test_data_doa.append(doa)
-                    test_data_clean.append(clean_signal)
-                    test_data_noisy.append(noisy_signal_np)
-                    test_data_num.append(target_num)
-                    test_data_snr.append(SNR_dB)
+            test_data_doa.append(doa)
+            test_data_clean.append(clean_signal)
+            test_data_noisy.append(noisy_signal_np)
+            test_data_num.append(target_num)
+        test_data_snr.append(SNR_dB)
 
         # Save test data
     np.savez('test_data.npz',
@@ -222,6 +220,8 @@ if __name__ == '__main__':
              target_num=test_data_num,
              SNR = test_data_snr,
              d=args.d,
+             max_target_num=args.max_target_num,
+             ant_num=args.ant_num,
              n_test=args.n_test
              )
 

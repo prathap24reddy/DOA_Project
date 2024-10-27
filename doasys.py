@@ -3,8 +3,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import scipy.signal
-import math
-import matplotlib.pyplot as plt
 
 
 def gen_doa(target_num, doa, ant_num):
@@ -34,6 +32,7 @@ def gen_signal(data_num, args):
     doa = np.ones((data_num, args.max_target_num)) * np.inf
     s = np.zeros((data_num, 2, args.ant_num))
     for n in range(data_num):
+        print("data generation of index:", n, " of", data_num)
         gen_doa(target_num[n], doa[n], args.ant_num)
         # perturbation
         d_per = np.random.randn(args.ant_num).T * np.random.rand(1) * args.max_per_std
@@ -152,6 +151,7 @@ class spectrumModule(nn.Module):
         x = x.view(bsz, -1)
         x = self.out_layer(x).view(bsz, -1)
         return x
+
 
 
 class DeepFreq(nn.Module):

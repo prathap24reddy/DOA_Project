@@ -109,5 +109,5 @@ if __name__ == '__main__':
         print(f'Epoch [{epoch + 1}/{args.n_epochs}], Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}')
 
     # Save the model
-    torch.save(net.state_dict(), 'trained_network.pth')
+    torch.save(net.state_dict(), 'net.pth')
     print("Training complete and model saved.")
